@@ -1,0 +1,15 @@
+{
+  "name": "famelii",
+  "private": true,
+  "workspaces": [
+    "web",
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @famelii/web",
+    "build:web": "npm run build -w @famelii/web",
+    "dev:mobile": "npm run start -w @famelii/mobile",
+    "typecheck": "npm run typecheck -w @famelii/core"
+  }
+}

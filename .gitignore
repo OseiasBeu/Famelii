@@ -1,0 +1,14 @@
+node_modules/
+.DS_Store
+*.log
+.env
+.env.local
+.env.*.local
+.expo/
+dist/
+.next/
+.claude/settings.local.json
+.mcp.json
+.tmp-xlsx/
+.tmp-xlsx.zip
+package-lock.json

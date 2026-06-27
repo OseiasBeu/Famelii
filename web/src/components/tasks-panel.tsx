@@ -131,7 +131,7 @@ function AddTaskInline({
               className={`flex h-6 w-6 items-center justify-center rounded-md text-xs transition ${
                 priority === p ? "ring-2 ring-offset-1" : "opacity-40 hover:opacity-80"
               }`}
-              style={{ color: TASK_PRIORITY_COLORS[p], ringColor: TASK_PRIORITY_COLORS[p] }}
+              style={{ color: TASK_PRIORITY_COLORS[p], "--tw-ring-color": TASK_PRIORITY_COLORS[p] } as React.CSSProperties}
               title={`Prioridade ${p}`}
             >
               <svg viewBox="0 0 24 24" fill={priority === p ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} className="h-3.5 w-3.5">

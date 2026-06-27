@@ -1,4 +1,4 @@
 {
-  "installCommand": "cd .. && npm install",
+  "installCommand": "cd .. && npm install && npm install lightningcss-linux-x64-gnu lightningcss-linux-x64-musl",
   "buildCommand": "cd .. && npm run build:web"
 }

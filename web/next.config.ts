@@ -5,7 +5,6 @@ const monorepoRoot = path.join(__dirname, "..");
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@famelii/core"],
-  // Produção / tracing no monorepo (dev usa webpack — ver script "dev").
   outputFileTracingRoot: monorepoRoot,
 };
 

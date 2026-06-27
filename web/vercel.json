@@ -1,4 +1,4 @@
 {
-  "installCommand": "cd .. && npm install --force",
+  "installCommand": "cd .. && rm -f package-lock.json && npm install",
   "buildCommand": "cd .. && npm run build:web"
 }

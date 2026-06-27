@@ -11,3 +11,4 @@ dist/
 .mcp.json
 .tmp-xlsx/
 .tmp-xlsx.zip
+package-lock.json

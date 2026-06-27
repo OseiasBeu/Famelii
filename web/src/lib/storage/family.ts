@@ -16,27 +16,81 @@ import {
   type MemberRole,
 } from "@famelii/core";
 
-export async function getFamily(): Promise<Family | null> {
-  // Check local first — Supabase needs auth to work with RLS
-  const local = await getLocalFamily();
-  if (local) return local;
+async function getAuthUser() {
   if (!hasDb()) return null;
-  const { data } = await db()!.from("families").select("*").limit(1).single();
-  if (!data) return null;
-  return { id: data.id, name: data.name, createdAt: data.created_at };
+  const { data: { user } } = await db()!.auth.getUser();
+  return user;
+}
+
+export async function getFamily(): Promise<Family | null> {
+  const user = await getAuthUser();
+
+  if (user && hasDb()) {
+    // 1. Check if user created a family
+    const { data: owned } = await db()!
+      .from("families")
+      .select("*")
+      .eq("created_by", user.id)
+      .limit(1)
+      .maybeSingle();
+    if (owned) return { id: owned.id, name: owned.name, createdAt: owned.created_at };
+
+    // 2. Check if user is a member of a family (linked by user_id)
+    const { data: membership } = await db()!
+      .from("family_members")
+      .select("family_id")
+      .eq("user_id", user.id)
+      .limit(1)
+      .maybeSingle();
+    if (membership) {
+      const { data: fam } = await db()!
+        .from("families")
+        .select("*")
+        .eq("id", membership.family_id)
+        .single();
+      if (fam) return { id: fam.id, name: fam.name, createdAt: fam.created_at };
+    }
+
+    // 3. Check if there's a family member with the user's email (invited)
+    if (user.email) {
+      const { data: byEmail } = await db()!
+        .from("family_members")
+        .select("id, family_id")
+        .eq("email", user.email)
+        .limit(1)
+        .maybeSingle();
+      if (byEmail) {
+        // Auto-link this user to the member
+        await db()!.from("family_members").update({ user_id: user.id }).eq("id", byEmail.id);
+        const { data: fam } = await db()!
+          .from("families")
+          .select("*")
+          .eq("id", byEmail.family_id)
+          .single();
+        if (fam) return { id: fam.id, name: fam.name, createdAt: fam.created_at };
+      }
+    }
+  }
+
+  // Fallback to localStorage
+  return getLocalFamily();
 }
 
 export async function createFamily(name: string): Promise<Family> {
-  if (!hasDb()) return createLocalFamily(name);
-  const supabase = db()!;
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data, error } = await supabase
-    .from("families")
-    .insert({ name: name.trim(), created_by: user?.id ?? null })
-    .select()
-    .single();
-  if (error || !data) return createLocalFamily(name);
-  return { id: data.id, name: data.name, createdAt: data.created_at };
+  const user = await getAuthUser();
+
+  if (user && hasDb()) {
+    const { data, error } = await db()!
+      .from("families")
+      .insert({ name: name.trim(), created_by: user.id })
+      .select()
+      .single();
+    if (!error && data) {
+      return { id: data.id, name: data.name, createdAt: data.created_at };
+    }
+  }
+
+  return createLocalFamily(name);
 }
 
 export async function updateFamilyName(name: string): Promise<void> {
@@ -47,18 +101,21 @@ export async function updateFamilyName(name: string): Promise<void> {
 }
 
 export async function listMembers(): Promise<FamilyMember[]> {
-  const local = await listLocalMembers();
-  if (local.length > 0) return local;
-  if (!hasDb()) return [];
-  const family = await getFamily();
-  if (!family) return [];
-  const { data } = await db()!
-    .from("family_members")
-    .select("*")
-    .eq("family_id", family.id)
-    .order("created_at");
-  if (!data) return [];
-  return data.map(mapMember);
+  const user = await getAuthUser();
+
+  if (user && hasDb()) {
+    const family = await getFamily();
+    if (family) {
+      const { data } = await db()!
+        .from("family_members")
+        .select("*")
+        .eq("family_id", family.id)
+        .order("created_at");
+      if (data && data.length > 0) return data.map(mapMember);
+    }
+  }
+
+  return listLocalMembers();
 }
 
 export async function addMember(input: {
@@ -67,24 +124,37 @@ export async function addMember(input: {
   birthDate?: string;
   avatar?: string;
   color?: string;
+  email?: string;
 }): Promise<FamilyMember> {
-  if (!hasDb()) return addLocalMember(input);
-  const family = await getFamily();
-  if (!family) return addLocalMember(input);
-  const { data, error } = await db()!
-    .from("family_members")
-    .insert({
-      family_id: family.id,
-      name: input.name.trim(),
-      role: input.role,
-      birth_date: input.birthDate || null,
-      avatar: input.avatar ?? "🧑",
-      color: input.color ?? "#3b82f6",
-    })
-    .select()
-    .single();
-  if (error || !data) return addLocalMember(input);
-  return mapMember(data);
+  const user = await getAuthUser();
+
+  if (user && hasDb()) {
+    const family = await getFamily();
+    if (family) {
+      const { data, error } = await db()!
+        .from("family_members")
+        .insert({
+          family_id: family.id,
+          name: input.name.trim(),
+          role: input.role,
+          birth_date: input.birthDate || null,
+          avatar: input.avatar ?? "🧑",
+          color: input.color ?? "#3b82f6",
+          email: input.email?.trim() || null,
+        })
+        .select()
+        .single();
+      if (!error && data) return mapMember(data);
+    }
+  }
+
+  return addLocalMember(input);
+}
+
+export async function linkCurrentUserToMember(memberId: string): Promise<void> {
+  const user = await getAuthUser();
+  if (!user || !hasDb()) return;
+  await db()!.from("family_members").update({ user_id: user.id }).eq("id", memberId);
 }
 
 export async function updateMember(
@@ -107,21 +177,24 @@ export async function removeMember(id: string): Promise<void> {
 }
 
 export async function isFamilySetup(): Promise<boolean> {
-  // Always check localStorage first — auth may not be configured yet
-  const localOk = await isLocalFamilySetup();
-  if (localOk) return true;
-  if (!hasDb()) return false;
-  const family = await getFamily();
-  if (!family) return false;
-  const { count } = await db()!
-    .from("family_members")
-    .select("*", { count: "exact", head: true })
-    .eq("family_id", family.id);
-  return (count ?? 0) > 0;
+  const user = await getAuthUser();
+
+  if (user && hasDb()) {
+    const family = await getFamily();
+    if (family) {
+      const { count } = await db()!
+        .from("family_members")
+        .select("*", { count: "exact", head: true })
+        .eq("family_id", family.id);
+      return (count ?? 0) > 0;
+    }
+    return false;
+  }
+
+  return isLocalFamilySetup();
 }
 
 export async function getMemberNames(): Promise<string[]> {
-  if (!hasDb()) return getLocalMemberNames();
   const members = await listMembers();
   return members.map((m) => m.name);
 }

@@ -7,7 +7,7 @@ import {
   MEMBER_ROLES,
   type MemberRole,
 } from "@famelii/core";
-import { addMember, createFamily } from "@/lib/storage/family";
+import { addMember, createFamily, linkCurrentUserToMember } from "@/lib/storage/family";
 
 const card = "rounded-2xl bg-[var(--nu-bg-card)] p-6";
 const shadow = { boxShadow: "var(--nu-shadow)" } as const;
@@ -16,6 +16,7 @@ const btnPrimary = "rounded-xl bg-[var(--nu-accent)] px-6 py-2.5 text-sm font-se
 
 type PendingMember = {
   name: string;
+  email: string;
   role: MemberRole;
   birthDate: string;
   avatar: string;
@@ -28,6 +29,7 @@ export function FamilySetup({ onComplete }: { onComplete: () => void }) {
   const [members, setMembers] = useState<PendingMember[]>([]);
 
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [role, setRole] = useState<MemberRole>("tutor");
   const [birthDate, setBirthDate] = useState("");
   const [avatar, setAvatar] = useState("👩");
@@ -43,7 +45,8 @@ export function FamilySetup({ onComplete }: { onComplete: () => void }) {
 
   function handleAddMember() {
     if (!name.trim()) return;
-    setMembers([...members, { name: name.trim(), role, birthDate, avatar, color }]);
+    setMembers([...members, { name: name.trim(), email: email.trim(), role, birthDate, avatar, color }]);
+    setEmail("");
     resetMemberForm();
     setStep("members");
   }
@@ -51,8 +54,13 @@ export function FamilySetup({ onComplete }: { onComplete: () => void }) {
   async function handleFinish() {
     if (!familyName.trim() || members.length === 0) return;
     await createFamily(familyName);
-    for (const m of members) {
-      await addMember(m);
+    let firstMemberId: string | null = null;
+    for (let i = 0; i < members.length; i++) {
+      const created = await addMember(members[i]);
+      if (i === 0) firstMemberId = created.id;
+    }
+    if (firstMemberId) {
+      await linkCurrentUserToMember(firstMemberId);
     }
     onComplete();
   }
@@ -169,6 +177,7 @@ export function FamilySetup({ onComplete }: { onComplete: () => void }) {
             </div>
 
             <input placeholder="Nome" value={name} onChange={(e) => setName(e.target.value)} className={input} autoFocus />
+            <input type="email" placeholder="Email (para login — opcional)" value={email} onChange={(e) => setEmail(e.target.value)} className={input} />
 
             <div>
               <label className="text-xs font-medium text-[var(--nu-muted)]">Papel na família</label>

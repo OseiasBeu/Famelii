@@ -7,7 +7,7 @@ import {
   MEMBER_ROLES,
   type MemberRole,
 } from "@famelii/core";
-import { addMember, createFamily, linkCurrentUserToMember } from "@/lib/storage/family";
+import { addMember, createFamily } from "@/lib/storage/family";
 
 const card = "rounded-2xl bg-[var(--nu-bg-card)] p-6";
 const shadow = { boxShadow: "var(--nu-shadow)" } as const;
@@ -54,13 +54,8 @@ export function FamilySetup({ onComplete }: { onComplete: () => void }) {
   async function handleFinish() {
     if (!familyName.trim() || members.length === 0) return;
     await createFamily(familyName);
-    let firstMemberId: string | null = null;
     for (let i = 0; i < members.length; i++) {
-      const created = await addMember(members[i]);
-      if (i === 0) firstMemberId = created.id;
-    }
-    if (firstMemberId) {
-      await linkCurrentUserToMember(firstMemberId);
+      await addMember({ ...members[i], linkUser: i === 0 });
     }
     onComplete();
   }

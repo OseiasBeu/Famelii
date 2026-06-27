@@ -9,14 +9,17 @@ import {
   type FamilyMember,
   type MemberRole,
 } from "@famelii/core";
+import { useRouter } from "next/navigation";
 import {
   addMember,
+  deleteFamily,
   getFamily,
   listMembers,
   removeMember,
   updateFamilyName,
   updateMember,
 } from "@/lib/storage/family";
+import { db } from "@/lib/supabase/db";
 
 const card = "rounded-2xl bg-[var(--nu-bg-card)] p-5";
 const shadow = { boxShadow: "var(--nu-shadow)" } as const;
@@ -24,6 +27,7 @@ const input = "w-full rounded-xl border bg-[var(--nu-bg)] px-3 py-2.5 text-sm ou
 const btnPrimary = "rounded-xl bg-[var(--nu-accent)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110";
 
 export function FamilyPanel() {
+  const router = useRouter();
   const [family, setFamily] = useState<Family | null>(null);
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [ready, setReady] = useState(false);
@@ -32,10 +36,23 @@ export function FamilyPanel() {
   const [showAdd, setShowAdd] = useState(false);
 
   const [name, setName] = useState("");
+  const [memberEmail, setMemberEmail] = useState("");
   const [role, setRole] = useState<MemberRole>("child");
   const [birthDate, setBirthDate] = useState("");
   const [avatar, setAvatar] = useState("🧑");
   const [color, setColor] = useState("#3b82f6");
+
+  async function handleLogout() {
+    const supabase = db();
+    if (supabase) await supabase.auth.signOut();
+    router.replace("/auth");
+  }
+
+  async function handleDeleteFamily() {
+    if (!confirm("Tens a certeza que queres eliminar a família? Todos os dados serão perdidos.")) return;
+    await deleteFamily();
+    router.replace("/app");
+  }
 
   const refresh = useCallback(async () => {
     const [f, m] = await Promise.all([getFamily(), listMembers()]);
@@ -55,8 +72,8 @@ export function FamilyPanel() {
 
   async function handleAdd() {
     if (!name.trim()) return;
-    await addMember({ name, role, birthDate, avatar, color });
-    setName(""); setBirthDate(""); setShowAdd(false);
+    await addMember({ name, role, birthDate, avatar, color, email: memberEmail });
+    setName(""); setMemberEmail(""); setBirthDate(""); setShowAdd(false);
     await refresh();
   }
 
@@ -131,6 +148,7 @@ export function FamilyPanel() {
               </div>
             </div>
             <input placeholder="Nome" value={name} onChange={(e) => setName(e.target.value)} className={input} autoFocus />
+            <input type="email" placeholder="Email de login (opcional)" value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)} className={input} />
             <div className="flex gap-2">
               {MEMBER_ROLES.map((r) => (
                 <button key={r.id} type="button" onClick={() => setRole(r.id)} className={`flex-1 rounded-xl border px-2 py-2 text-center text-xs font-medium transition ${role === r.id ? "border-[var(--nu-accent)] bg-[var(--nu-accent-soft)] text-[var(--nu-accent-strong)]" : "text-[var(--nu-muted)]"}`}>
@@ -150,6 +168,16 @@ export function FamilyPanel() {
           + Adicionar membro
         </button>
       )}
+
+      {/* Account actions */}
+      <div className="mt-4 flex flex-col gap-2 border-t pt-6">
+        <button type="button" onClick={handleLogout} className="w-full rounded-xl border py-3 text-sm font-medium text-[var(--nu-muted)] transition hover:bg-[var(--nu-bg-elevated)]">
+          Sair da conta
+        </button>
+        <button type="button" onClick={handleDeleteFamily} className="w-full rounded-xl border border-red-200 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50 dark:border-red-900/30 dark:text-red-400 dark:hover:bg-red-950/20">
+          Eliminar família
+        </button>
+      </div>
     </div>
   );
 }

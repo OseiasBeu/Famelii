@@ -93,6 +93,16 @@ export async function createFamily(name: string): Promise<Family> {
   return createLocalFamily(name);
 }
 
+export async function deleteFamily(): Promise<void> {
+  const user = await getAuthUser();
+  if (user && hasDb()) {
+    const family = await getFamily();
+    if (family) {
+      await db()!.from("families").delete().eq("id", family.id);
+    }
+  }
+}
+
 export async function updateFamilyName(name: string): Promise<void> {
   if (!hasDb()) return updateLocalFamilyName(name);
   const family = await getFamily();
@@ -125,6 +135,7 @@ export async function addMember(input: {
   avatar?: string;
   color?: string;
   email?: string;
+  linkUser?: boolean;
 }): Promise<FamilyMember> {
   const user = await getAuthUser();
 
@@ -140,7 +151,8 @@ export async function addMember(input: {
           birth_date: input.birthDate || null,
           avatar: input.avatar ?? "🧑",
           color: input.color ?? "#3b82f6",
-          email: input.email?.trim() || null,
+          email: input.email?.trim() || (input.linkUser ? user.email : null),
+          user_id: input.linkUser ? user.id : null,
         })
         .select()
         .single();

@@ -94,8 +94,10 @@ export function formatEuroCents(
 }
 
 export function parseDateLocal(input: string): string | null {
+  if (!input) return null;
   const s = input.trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // dd/mm/yyyy or dd-mm-yyyy or dd.mm.yyyy
   const dmY = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(s);
   if (dmY) {
     const d = Number(dmY[1]);
@@ -104,6 +106,35 @@ export function parseDateLocal(input: string): string | null {
     if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
       return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     }
+  }
+  // mm/dd/yyyy (US format — only if month > 12 in first position is impossible)
+  const mdY = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(s);
+  if (mdY) {
+    const m = Number(mdY[1]);
+    const d = Number(mdY[2]);
+    const y = Number(mdY[3]);
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31 && m > 12) {
+      return `${y}-${String(d).padStart(2, "0")}-${String(m).padStart(2, "0")}`;
+    }
+  }
+  // dd/mm/yy
+  const dmYshort = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2})$/.exec(s);
+  if (dmYshort) {
+    const d = Number(dmYshort[1]);
+    const m = Number(dmYshort[2]);
+    const y = 2000 + Number(dmYshort[3]);
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    }
+  }
+  // yyyymmdd (OFX/bank format)
+  if (/^\d{8}$/.test(s)) {
+    return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+  }
+  // JS Date object from XLSX
+  const d = new Date(s);
+  if (!isNaN(d.getTime()) && d.getFullYear() > 1990) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
   return null;
 }

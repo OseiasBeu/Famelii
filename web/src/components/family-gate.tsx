@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { isFamilySetup } from "@famelii/core";
+import { isFamilySetup } from "@/lib/storage/family";
 import { FamilySetup } from "./family-setup";
 
 export function FamilyGate({ children }: { children: React.ReactNode }) {

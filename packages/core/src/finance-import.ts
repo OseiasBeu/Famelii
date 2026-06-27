@@ -43,6 +43,28 @@ function parseCsvLine(line: string): string[] {
   return out.map((c) => c.trim());
 }
 
+function parseAmount(raw: string): { cents: number; isNegative: boolean } | null {
+  let s = raw.trim().replace(/€/g, "").replace(/R\$/g, "").replace(/\s/g, "");
+  if (!s) return null;
+  const isNegative = s.startsWith("-") || s.startsWith("(");
+  s = s.replace(/[()]/g, "").replace(/^-/, "");
+  // PT format: 1.234,56 → detect by comma before last 2-3 digits
+  if (/,\d{1,2}$/.test(s) && s.includes(".")) {
+    s = s.replace(/\./g, "").replace(",", ".");
+  }
+  // BR/PT format: 1234,56
+  else if (/,\d{1,2}$/.test(s)) {
+    s = s.replace(",", ".");
+  }
+  // US/EN format: 1,234.56
+  else if (/\.\d{1,2}$/.test(s) && s.includes(",")) {
+    s = s.replace(/,/g, "");
+  }
+  const n = Number(s);
+  if (!Number.isFinite(n)) return null;
+  return { cents: Math.round(Math.abs(n) * 100), isNegative };
+}
+
 export function parseCsvTransactions(text: string): ImportPreviewRow[] {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length < 2) return [];
@@ -51,11 +73,14 @@ export function parseCsvTransactions(text: string): ImportPreviewRow[] {
   const idx = (names: string[]) =>
     header.findIndex((h) => names.some((n) => h.includes(n)));
 
-  const iDate = idx(["data", "date"]);
+  const iDate = idx(["data", "date", "data mov", "data do lancamento", "data lancamento", "data transacao"]);
+  const iDateVal = idx(["data valor", "data_valor", "value date"]);
   const iType = idx(["classificacao", "tipo", "type"]);
-  const iDesc = idx(["descricao", "description", "memo"]);
+  const iDesc = idx(["descricao", "description", "memo", "historico", "lancamento", "titulo", "descritivo"]);
   const iCat = idx(["categoria", "category"]);
-  const iVal = idx(["valor", "amount", "montante"]);
+  const iVal = idx(["valor", "amount", "montante", "quantia"]);
+  const iDebit = idx(["debito", "debit", "saida"]);
+  const iCredit = idx(["credito", "credit", "entrada"]);
   const iYear = idx(["ano", "year"]);
   const iMonth = idx(["mes", "month"]);
 
@@ -66,6 +91,7 @@ export function parseCsvTransactions(text: string): ImportPreviewRow[] {
 
     let dateLocal: string | null = null;
     if (iDate >= 0) dateLocal = parseDateLocal(cols[iDate] ?? "");
+    if (!dateLocal && iDateVal >= 0) dateLocal = parseDateLocal(cols[iDateVal] ?? "");
     if (!dateLocal && iYear >= 0 && iMonth >= 0) {
       const y = Number(cols[iYear]);
       const m = Number(cols[iMonth]);
@@ -75,9 +101,31 @@ export function parseCsvTransactions(text: string): ImportPreviewRow[] {
     }
     if (!dateLocal) continue;
 
-    const type = iType >= 0 ? classifyType(cols[iType] ?? "") : null;
-    const amountCents =
-      iVal >= 0 ? parseEuroFromSpreadsheet(cols[iVal] ?? "") : null;
+    let type: TransactionType | null = iType >= 0 ? classifyType(cols[iType] ?? "") : null;
+    let amountCents: number | null = null;
+
+    // Separate debit/credit columns (CGD, Millennium, etc.)
+    if (iDebit >= 0 && iCredit >= 0) {
+      const debit = parseAmount(cols[iDebit] ?? "");
+      const credit = parseAmount(cols[iCredit] ?? "");
+      if (credit && credit.cents > 0) {
+        type = "income";
+        amountCents = credit.cents;
+      } else if (debit && debit.cents > 0) {
+        type = "expense";
+        amountCents = debit.cents;
+      }
+    }
+
+    // Single amount column — negative = expense, positive = income
+    if (amountCents == null && iVal >= 0) {
+      const parsed = parseAmount(cols[iVal] ?? "");
+      if (parsed && parsed.cents > 0) {
+        amountCents = parsed.cents;
+        if (type == null) type = parsed.isNegative ? "expense" : "income";
+      }
+    }
+
     if (amountCents == null || amountCents <= 0) continue;
 
     rows.push({

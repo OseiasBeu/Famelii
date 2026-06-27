@@ -2,12 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  addMember,
-  getFamily,
-  listMembers,
-  removeMember,
-  updateFamilyName,
-  updateMember,
   AVATAR_OPTIONS,
   COLOR_OPTIONS,
   MEMBER_ROLES,
@@ -15,6 +9,14 @@ import {
   type FamilyMember,
   type MemberRole,
 } from "@famelii/core";
+import {
+  addMember,
+  getFamily,
+  listMembers,
+  removeMember,
+  updateFamilyName,
+  updateMember,
+} from "@/lib/storage/family";
 
 const card = "rounded-2xl bg-[var(--nu-bg-card)] p-5";
 const shadow = { boxShadow: "var(--nu-shadow)" } as const;

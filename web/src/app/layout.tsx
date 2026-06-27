@@ -16,6 +16,22 @@ export const metadata: Metadata = {
   title: "Famelii — The heart of your family",
   description:
     "O coração da tua família — rotina, humor e coordenação da casa num só sítio.",
+  manifest: "/manifest.json",
+  themeColor: "#e8a849",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Famelii",
+  },
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    viewportFit: "cover",
+  },
 };
 
 export default function RootLayout({

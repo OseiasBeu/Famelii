@@ -6,6 +6,7 @@ import {
   deleteMission,
   listMissions,
   updateMissionStatus,
+  getMemberNames,
   MISSION_PRIORITIES,
   MISSION_STATUSES,
   type Mission,
@@ -34,8 +35,13 @@ export function MissionsPanel() {
   const [priority, setPriority] = useState<MissionPriority>("medium");
   const [dueDate, setDueDate] = useState("");
   const [category, setCategory] = useState("");
+  const [memberNames, setMemberNames] = useState<string[]>([]);
 
-  const refresh = useCallback(async () => { setMissions(await listMissions()); }, []);
+  const refresh = useCallback(async () => {
+    const [m, names] = await Promise.all([listMissions(), getMemberNames()]);
+    setMissions(m);
+    setMemberNames(names);
+  }, []);
   useEffect(() => { refresh().finally(() => setReady(true)); }, [refresh]);
 
   const filtered = filter === "all" ? missions : missions.filter((m) => m.status === filter);
@@ -89,7 +95,14 @@ export function MissionsPanel() {
             <input placeholder="Título da missão" value={title} onChange={(e) => setTitle(e.target.value)} className={input} required />
             <input placeholder="Descrição (opcional)" value={description} onChange={(e) => setDescription(e.target.value)} className={input} />
             <div className="grid gap-3 sm:grid-cols-2">
-              <input placeholder="Responsável" value={assignee} onChange={(e) => setAssignee(e.target.value)} className={input} />
+              {memberNames.length > 0 ? (
+                <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className={input}>
+                  <option value="">Sem responsável</option>
+                  {memberNames.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              ) : (
+                <input placeholder="Responsável" value={assignee} onChange={(e) => setAssignee(e.target.value)} className={input} />
+              )}
               <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={input} />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

@@ -12,3 +12,4 @@ dist/
 .tmp-xlsx/
 .tmp-xlsx.zip
 package-lock.json
+tmp-xlsx-parse.json

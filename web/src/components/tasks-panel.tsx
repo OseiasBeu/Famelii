@@ -9,6 +9,7 @@ import {
   listTasks,
   toggleTask,
   updateTask,
+  getMemberNames,
   TASK_PRIORITY_COLORS,
   type FamilyTask,
   type TaskPriority,
@@ -51,9 +52,11 @@ function PriorityCheckbox({
 function AddTaskInline({
   section,
   onAdd,
+  memberNames = [],
 }: {
   section: string;
   onAdd: () => void;
+  memberNames?: string[];
 }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -116,12 +119,14 @@ function AddTaskInline({
           onChange={(e) => setDueDate(e.target.value)}
           className="rounded-lg border bg-[var(--nu-bg)] px-2 py-1 text-xs outline-none"
         />
-        <input
-          placeholder="Responsável"
-          value={assignee}
-          onChange={(e) => setAssignee(e.target.value)}
-          className="rounded-lg border bg-[var(--nu-bg)] px-2 py-1 text-xs outline-none"
-        />
+        {memberNames.length > 0 ? (
+          <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className="rounded-lg border bg-[var(--nu-bg)] px-2 py-1 text-xs outline-none">
+            <option value="">Sem responsável</option>
+            {memberNames.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        ) : (
+          <input placeholder="Responsável" value={assignee} onChange={(e) => setAssignee(e.target.value)} className="rounded-lg border bg-[var(--nu-bg)] px-2 py-1 text-xs outline-none" />
+        )}
         <div className="flex gap-0.5">
           {([1, 2, 3, 4] as TaskPriority[]).map((p) => (
             <button
@@ -275,11 +280,13 @@ export function TasksPanel() {
   const [showDone, setShowDone] = useState(false);
   const [newSection, setNewSection] = useState("");
   const [addingSection, setAddingSection] = useState(false);
+  const [memberNames, setMemberNames] = useState<string[]>([]);
 
   const refresh = useCallback(async () => {
-    const [t, s] = await Promise.all([listTasks(), listSections()]);
+    const [t, s, m] = await Promise.all([listTasks(), listSections(), getMemberNames()]);
     setTasks(t);
     setSections(s);
+    setMemberNames(m);
   }, []);
 
   useEffect(() => { refresh().finally(() => setReady(true)); }, [refresh]);
@@ -322,7 +329,7 @@ export function TasksPanel() {
         </div>
       )}
 
-      <AddTaskInline section="" onAdd={refresh} />
+      <AddTaskInline section="" onAdd={refresh} memberNames={memberNames} />
 
       {/* Sections */}
       {sections.map((sec) => {
@@ -336,7 +343,7 @@ export function TasksPanel() {
             {secTasks.map((t) => (
               <TaskRow key={t.id} task={t} onRefresh={refresh} />
             ))}
-            <AddTaskInline section={sec} onAdd={refresh} />
+            <AddTaskInline section={sec} onAdd={refresh} memberNames={memberNames} />
           </div>
         );
       })}

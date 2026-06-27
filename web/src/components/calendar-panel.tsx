@@ -7,6 +7,7 @@ import {
   getDaysInMonth,
   getFirstDayOfWeek,
   listEventsForMonth,
+  getMemberNames,
   EVENT_CATEGORIES,
   type CalendarEvent,
   type EventCategory,
@@ -38,9 +39,12 @@ export function CalendarPanel() {
   const [timeEnd, setTimeEnd] = useState("");
   const [category, setCategory] = useState<EventCategory>("familia");
   const [assignee, setAssignee] = useState("");
+  const [memberNames, setMemberNames] = useState<string[]>([]);
 
   const refresh = useCallback(async () => {
-    setEvents(await listEventsForMonth(year, month));
+    const [evts, names] = await Promise.all([listEventsForMonth(year, month), getMemberNames()]);
+    setEvents(evts);
+    setMemberNames(names);
   }, [year, month]);
 
   useEffect(() => { refresh().finally(() => setReady(true)); }, [refresh]);
@@ -147,7 +151,14 @@ export function CalendarPanel() {
                 <select value={category} onChange={(e) => setCategory(e.target.value as EventCategory)} className={input}>
                   {EVENT_CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
                 </select>
-                <input placeholder="Responsável" value={assignee} onChange={(e) => setAssignee(e.target.value)} className={input} />
+                {memberNames.length > 0 ? (
+                  <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className={input}>
+                    <option value="">Sem responsável</option>
+                    {memberNames.map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                ) : (
+                  <input placeholder="Responsável" value={assignee} onChange={(e) => setAssignee(e.target.value)} className={input} />
+                )}
               </div>
               <button type="submit" className={`${btnPrimary} w-fit`}>Guardar evento</button>
             </form>

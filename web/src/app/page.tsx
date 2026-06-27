@@ -53,7 +53,7 @@ export default function Home() {
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link
-            href="/app"
+            href="/auth"
             className="inline-flex h-12 items-center justify-center rounded-xl bg-[var(--nu-accent)] px-8 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
           >
             Começar agora
@@ -109,7 +109,7 @@ export default function Home() {
             complicações.
           </p>
           <Link
-            href="/app"
+            href="/auth"
             className="mt-6 inline-flex h-12 items-center justify-center rounded-xl bg-[var(--nu-accent)] px-8 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
           >
             Criar a minha família

@@ -133,9 +133,6 @@ export function AuthForm() {
         </div>
       </form>
 
-      <a href="/app" className="text-xs text-[var(--nu-muted)] hover:underline">
-        Continuar sem conta (dados locais)
-      </a>
     </div>
   );
 }
